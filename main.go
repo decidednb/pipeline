@@ -11,7 +11,7 @@ import (
 )
 
 // Интервал очистки кольцевого буфера
-const bufferDrainInterval time.Duration = 30 * time.Second
+const bufferDrainInterval time.Duration = 10 * time.Second
 
 // Размер кольцевого буфера
 const bufferSize int = 10
@@ -43,17 +43,21 @@ func (r *RingIntBuffer) Push(el int) {
 		r.pos++
 		r.array[r.pos] = el
 	}
+	fmt.Printf("В буфер добавлено число: %d\n", el)
 }
 
 // Get - получение всех элементов буфера и его очистка
 func (r *RingIntBuffer) Get() []int {
+	fmt.Println("Получение всех элементов из буфера и его очистка")
 	if r.pos < 0 {
+		fmt.Println("Буфер пуст")
 		return nil
 	}
 	r.m.Lock()
 	defer r.m.Unlock()
 	var output []int = r.array[:r.pos+1]
 	r.pos = -1
+	fmt.Println("Буфер ощищен")
 	return output
 }
 
@@ -78,6 +82,7 @@ func (p *PipeLineInt) Run(source <-chan int) <-chan int {
 	for index := range p.stages {
 		c = p.runStageInt(p.stages[index], c)
 	}
+	fmt.Println("Запущены стадии конвейера")
 	return c
 }
 
@@ -119,7 +124,10 @@ func main() {
 				select {
 				case data := <-c:
 					if data > 0 {
+						fmt.Printf("Число %d прошло стадию фильтрации отрицательных чисел\n", data)
 						convertedIntChan <- data
+					} else {
+						fmt.Printf("Число %d отфильтровано стадией фильтрации отрицательных чисел\n", data)
 					}
 				case <-done:
 					return
@@ -136,7 +144,10 @@ func main() {
 				select {
 				case data := <-c:
 					if data > 0 && data%3 == 0 {
+						fmt.Printf("Число %d прошло стадию фильтрации чисел кратных 3 и не равных 0\n", data)
 						filteredIntChan <- data
+					} else {
+						fmt.Printf("Число %d отфильтровано стадией фильтрации чисел кратных 3 и не равных 0\n", data)
 					}
 				case <-done:
 					return
@@ -149,6 +160,7 @@ func main() {
 	bufferStageInt := func(done <-chan bool, c <-chan int) <-chan int {
 		bufferedIntChan := make(chan int)
 		buffer := NewRingIntBuffer(bufferSize)
+		fmt.Println("Инициализирован буфер целых чисел")
 		go func() {
 			for {
 				select {
